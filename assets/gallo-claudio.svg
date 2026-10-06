@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" role="img" aria-labelledby="title">
+  <title id="title">Gallo Claudio</title>
+  <g stroke="#252324" stroke-linecap="round" stroke-linejoin="round" stroke-width="7">
+    <!-- Black tail feathers -->
+    <path d="M78 198c-34-13-49-42-42-72 23 10 40 29 48 53-4-30 4-52 25-68 11 28 10 54-4 78" fill="#252324"/>
+    <!-- White body and long neck -->
+    <path d="M74 240c4-37 18-62 44-77l13-89h74l11 91c29 16 44 40 47 75z" fill="#fffdf5"/>
+    <!-- Red comb -->
+    <path d="M105 80c-12-11-9-29 3-36 6-4 13-3 18 1 0-17 13-27 26-23 8 2 12 9 13 18 8-12 24-13 32-4 8 8 6 20-1 31l-9 15h-72z" fill="#e63b36"/>
+    <!-- Face -->
+    <path d="M87 106c0-35 25-58 60-58 37 0 62 26 62 63 0 26-10 46-28 59l-17 20h-42l-18-21c-11-15-17-37-17-63z" fill="#fffdf5"/>
+    <!-- Brow and eyes -->
+    <path d="M106 103c13-10 27-10 40-2M159 101c13-9 27-9 39-1" fill="none" stroke-width="9"/>
+    <path d="M111 111c11-7 24-6 34 2l-2 16c-10 7-21 6-30-1zM165 111c10-7 23-7 33 1l-2 16c-9 7-21 7-30 0z" fill="#fffdf5" stroke-width="5"/>
+    <ellipse cx="132" cy="121" rx="5" ry="8" fill="#252324" stroke="none"/>
+    <ellipse cx="183" cy="121" rx="5" ry="8" fill="#252324" stroke="none"/>
+    <!-- Beak -->
+    <path d="M117 143c18-10 56-10 77 0 12 6 24 18 30 30-22 17-56 24-83 14-17-6-31-21-36-34z" fill="#f5b72f"/>
+    <path d="M141 184c24 9 55 5 76-8-7 20-27 32-50 31-17-1-29-8-36-19z" fill="#e88d24" stroke-width="5"/>
+    <path d="M142 164c15 4 31 4 46 0" fill="none" stroke-width="4"/>
+    <!-- Wattle and bow tie -->
+    <path d="M177 208c-2 9-2 15 4 18 7-2 10-9 8-17" fill="#e63b36" stroke-width="5"/>
+    <path d="M119 226l22 8-22 12zM164 234l22-8v20z" fill="#e63b36" stroke-width="5"/>
+    <path d="M140 234h24v18h-24z" fill="#e63b36" stroke-width="5"/>
+  </g>
+</svg>

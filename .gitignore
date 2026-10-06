@@ -1,0 +1,12 @@
+.mnemo
+.codegraph/
+.cursor
+.pi
+.agents/
+.claude/
+.devin/
+.windsurf/
+skills-lock.json
+docs/tui/
+AGENTS.md
+CLAUDE.md
