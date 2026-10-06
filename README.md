@@ -64,6 +64,9 @@ claudio work
 | `claudio pin unpin` | Remove the pin |
 | `claudio rename <old> <new>` | Rename a profile |
 | `claudio remove <name>` | Delete a profile |
+| `claudio model <name>` | Show the default model for a profile |
+| `claudio model <name> <model>` | Set the default model for a profile |
+| `claudio model <name> --unset` | Remove the default model |
 | `claudio doctor` | Check the setup |
 | `claudio manage` | Open the interactive Task Hub |
 
@@ -112,6 +115,20 @@ If `~/.claude` already exists it is backed up as `~/.claude.bak.<timestamp>` bef
 claudio restore --from-profile=personal
 ```
 
+## Default model per profile
+
+Assign a default Claude model to any profile so it launches with that model automatically:
+
+```bash
+claudio model personal claude-sonnet-4-6
+claudio model work claude-opus-4-5
+
+claudio model personal          # show current default
+claudio model personal --unset  # remove the default
+```
+
+When a profile has a default model set, claudio prepends `--model <model>` every time it launches Claude with that profile. If you pass `--model` yourself, your value takes precedence.
+
 ## Profiles
 
 Each profile gets its own directory under `~/.claudio/profiles/<name>/claude/`. Auth credentials are stored there, isolated from other profiles and from `~/.claude`.
@@ -158,6 +175,27 @@ When running `claudio` with no profile name, the resolution order is:
 claudio sets `CLAUDE_CONFIG_DIR` to the profile directory before launching Claude. `~/.claude` stays the source of truth for global settings: both `settings.json` and `hooks/` are symlinked from there into each profile.
 
 Project-level `.claude` directories work as normal. Claude Code merges project settings on top of global settings and runs project hooks alongside global hooks. If a project's `.claude` has its own `settings.json` or `hooks/`, those will override or extend the profile's config, which is standard Claude Code behavior. `claudio doctor` flags any local `.claude` directories where this could be unexpected.
+
+## Troubleshooting
+
+### After `claudio migrate`, Claude asks me to log in again
+
+This is expected. Claude Code session tokens are tied to the `CLAUDE_CONFIG_DIR` they were created in. When a migrated profile runs for the first time under a different directory, Claude Code invalidates the existing session and starts a new one.
+
+Your configuration, preferences, and history are migrated correctly. Only the auth session needs to be re-established:
+
+```bash
+claudio login personal
+```
+
+### `claudio migrate` fails with "profile already exists"
+
+If you previously ran `claudio create <name>`, the profile slot is already taken. Remove it first, then migrate:
+
+```bash
+claudio remove <name>
+claudio migrate <name>
+```
 
 ## License
 

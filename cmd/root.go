@@ -54,6 +54,7 @@ func init() {
 		switchCmd,
 		pinCmd,
 		doctorCmd,
+		modelCmd,
 	)
 }
 
@@ -73,10 +74,9 @@ func runRoot(_ *cobra.Command, _ []string) error {
 		return runSwitch(nil, nil)
 	}
 
-	configDir, err := cfg.ProfileConfigDir(profileName)
-	if err != nil {
-		return err
-	}
+	p := cfg.Profiles[profileName]
+	configDir := config.ExpandPath(p.ConfigDir)
+	launchArgs := launcher.WithModel(p.DefaultModel, nil)
 	fmt.Fprintf(os.Stderr, "claudio: launching %q (%s)\n", profileName, reason)
-	return launcher.Launch(configDir, nil)
+	return launcher.Launch(configDir, launchArgs)
 }

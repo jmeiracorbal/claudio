@@ -40,9 +40,11 @@ func runRun(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	configDir, err := cfg.ProfileConfigDir(name)
-	if err != nil {
-		return err
+	p, ok := cfg.Profiles[name]
+	if !ok {
+		return fmt.Errorf("profile %q not found", name)
 	}
+	configDir := config.ExpandPath(p.ConfigDir)
+	claudeArgs = launcher.WithModel(p.DefaultModel, claudeArgs)
 	return launcher.Launch(configDir, claudeArgs)
 }

@@ -15,6 +15,7 @@ const (
 
 type Profile struct {
 	ConfigDir     string `json:"configDir"`
+	DefaultModel  string `json:"defaultModel,omitempty"`
 	OriginAccount bool   `json:"origin_account,omitempty"`
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -16,6 +17,20 @@ func Launch(configDir string, args []string) error {
 		return err
 	}
 	return syscall.Exec(cmd.Path, cmd.Args, cmd.Env)
+}
+
+// WithModel prepends --model <model> to args when model is non-empty and
+// --model is not already present in args.
+func WithModel(model string, args []string) []string {
+	if model == "" {
+		return args
+	}
+	for _, a := range args {
+		if a == "--model" || strings.HasPrefix(a, "--model=") {
+			return args
+		}
+	}
+	return append([]string{"--model", model}, args...)
 }
 
 // Command builds the Claude process used by the full-screen manager. Bubble Tea
