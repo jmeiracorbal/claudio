@@ -16,11 +16,9 @@ func DefaultConfigDir(name string) (string, error) {
 	return filepath.Join(dir, "profiles", name, "claude"), nil
 }
 
-// Create sets up the profile directory and registers it in config.
-// By default, settings.json and hooks/ are symlinked from ~/.claude so the
-// new profile shares your existing configuration.
-// Pass isolated=true to create a fully independent profile with no symlinks.
-func Create(name string, isolated bool) error {
+// Create registers a profile with an empty config directory. Claude builds
+// its own layout there on first launch, so the profile is fully independent.
+func Create(name string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -38,32 +36,7 @@ func Create(name string, isolated bool) error {
 	}
 
 	cfg.Profiles[name] = config.Profile{ConfigDir: profileDir}
-
-	if !isolated {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		claudeDir := filepath.Join(home, ".claude")
-		if err := linkShared(claudeDir, profileDir); err != nil {
-			return err
-		}
-	}
-
 	return cfg.Save()
-}
-
-// linkShared creates symlinks for settings.json and hooks/ from srcDir into dstDir.
-func linkShared(srcDir, dstDir string) error {
-	for _, entry := range []string{"settings.json", "hooks"} {
-		src := filepath.Join(srcDir, entry)
-		dst := filepath.Join(dstDir, entry)
-		os.Remove(dst)
-		if err := os.Symlink(src, dst); err != nil {
-			return fmt.Errorf("symlinking %s: %w", entry, err)
-		}
-	}
-	return nil
 }
 
 func Remove(name string) error {
@@ -101,11 +74,20 @@ func Rename(old, newName string) error {
 	if err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(newDir), 0755); err != nil {
+		return fmt.Errorf("creating profile directory: %w", err)
+	}
 	if err := os.Rename(oldDir, newDir); err != nil {
 		return fmt.Errorf("renaming directory: %w", err)
 	}
+	// Drop the old profiles/<name>/ wrapper; fails harmlessly if not empty.
+	_ = os.Remove(filepath.Dir(oldDir))
+	if err := RewritePaths(newDir, oldDir); err != nil {
+		return fmt.Errorf("rewriting paths: %w", err)
+	}
 
-	cfg.Profiles[newName] = config.Profile{ConfigDir: newDir}
+	p.ConfigDir = newDir
+	cfg.Profiles[newName] = p
 	delete(cfg.Profiles, old)
 
 	for i, rule := range cfg.Rules {

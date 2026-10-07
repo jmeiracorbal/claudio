@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/jmeiracorbal/claudio/internal/profile"
 )
 
 // Launch replaces the current process with claude using the given configDir.
@@ -40,7 +42,13 @@ func Command(configDir string, args []string) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("claude not found in PATH — is Claude Code installed?")
 	}
-	cmd := exec.Command(claude, args...)
+	// Keep the local installation's CLAUDE.md out of the profile (claude.toml,
+	// [launch]). A --settings passed by the user comes later and wins.
+	settings, err := profile.LaunchSettings()
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(claude, append([]string{"--settings", settings}, args...)...)
 	cmd.Env = append(os.Environ(), "CLAUDE_CONFIG_DIR="+configDir)
 	return cmd, nil
 }

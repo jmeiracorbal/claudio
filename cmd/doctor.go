@@ -81,7 +81,7 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 			if _, err := os.Stat(expanded); os.IsNotExist(err) {
 				fail("Profile "+name, expanded, "directory missing")
 			} else {
-				checkSymlinks(name, expanded, check)
+				pass("Profile "+name, expanded)
 			}
 		}
 	}
@@ -118,29 +118,6 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Println()
 	return nil
-}
-
-func checkSymlinks(profileName, dir string, log func(label, value, status string)) {
-	for _, entry := range []string{"settings.json", "hooks"} {
-		p := filepath.Join(dir, entry)
-		info, err := os.Lstat(p)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			continue
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			target, _ := os.Readlink(p)
-			if _, err := os.Stat(p); os.IsNotExist(err) {
-				log("Profile "+profileName+" "+entry, target, "WARN  symlink target missing")
-			} else {
-				log("Profile "+profileName+" "+entry, "→ "+target, "OK")
-			}
-		} else {
-			log("Profile "+profileName+" "+entry, "own", "OK")
-		}
-	}
 }
 
 func checkConflictingClaudeDir(cwd string, warn func(string, string, string)) {

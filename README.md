@@ -52,9 +52,9 @@ claudio work
 | Command | Description |
 |---|---|
 | `claudio create <name>` | Create a new profile |
-| `claudio create <name> --isolated` | Create a profile with its own settings and hooks |
-| `claudio migrate <name>` | Migrate your existing `~/.claude` account into a claudio profile |
-| `claudio restore` | Restore the origin account back to `~/.claude` |
+| `claudio copy --to-profile=<name> --from-local [--with-history]` | Create a profile from your local installation's configuration (`~/.claude`) |
+| `claudio copy --to-profile=<name> --from=<profile> [--with-history]` | Create a profile from another profile's configuration |
+| `claudio restore` | Copy the origin account back to the local installation (`~/.claude`) |
 | `claudio login <name>` | Open Claude with the given profile to authenticate |
 | `claudio <name> [-- args...]` | Launch Claude with that profile |
 | `claudio switch` | Interactive profile selector |
@@ -75,7 +75,7 @@ claudio work
 Run `claudio manage` to open the full-screen Task Hub. It includes:
 
 - **Launch Claude:** choose a profile and start a Claude session.
-- **Profile Library:** create shared or isolated profiles, log in, rename, launch, and remove profiles.
+- **Profile Library:** create profiles, log in, rename, launch, and remove profiles.
 - **Project Routing:** see the profile resolved for the current directory, pin or unpin a project, and add or remove path rules.
 - **Check setup:** inspect Claude availability, configuration, profile directories, and the active route.
 
@@ -87,29 +87,37 @@ For a static illustrative frame (with sample profile names and paths):
 claudio manage --frame --screen home --cols 100 --rows 30
 ```
 
-## Migrating an existing account
+## Copying an existing configuration
 
-If you already have a Claude Code account in `~/.claude` and want to bring it under claudio:
-
-```bash
-claudio migrate personal
-```
-
-This copies `~/.claude` into `~/.claudio/profiles/personal/claude/` and marks it as the **origin account**. The original `~/.claude` is left untouched. From that point, use `claudio personal` instead of `claude` directly.
-
-To migrate from a non-standard location:
+If you already use Claude Code in `~/.claude`, copy it into a profile:
 
 ```bash
-claudio migrate work --from-external-path=/path/to/.claude
+claudio copy --to-profile=personal --from-local
 ```
 
-To reverse the migration and restore the account back to `~/.claude`:
+This copies the configuration of `~/.claude` and `~/.claude.json` (settings, `CLAUDE.md`, plugins, skills, hooks and MCP servers) into `~/.claudio/profiles/personal/claude/` and marks the profile as the **origin account**. History, conversations and sessions are personal data of an account, so they are copied only if you ask for them, typically when the profile will use the same account:
+
+```bash
+claudio copy --to-profile=personal --from-local --with-history
+```
+
+The account identity is never copied; Claude fills it in when you log in. What counts as configuration, history or disposable cache is defined in [`claude.toml`](claude.toml) (`[copy]`). Paths that pointed into `~/.claude`, such as hook commands and plugin locations, are rewritten to the profile. From then on the profile is independent: nothing is shared or synced with `~/.claude`, which is left untouched and keeps working with plain `claude`.
+
+To start a profile from another profile's configuration:
+
+```bash
+claudio copy --to-profile=work-2 --from=work
+```
+
+Login tokens are stored in the system keychain per config directory and are never copied, so log in once in the new profile (`claudio login <name>`).
+
+To copy the origin account back to the local installation:
 
 ```bash
 claudio restore
 ```
 
-If `~/.claude` already exists it is backed up as `~/.claude.bak.<timestamp>` before being replaced. To restore a specific profile instead of the origin account:
+Existing `~/.claude` and `~/.claude.json` are backed up as `<name>.bak.<timestamp>` before being replaced. To restore a specific profile instead of the origin account:
 
 ```bash
 claudio restore --from-profile=personal
@@ -131,9 +139,17 @@ When a profile has a default model set, claudio prepends `--model <model>` every
 
 ## Profiles
 
-Each profile gets its own directory under `~/.claudio/profiles/<name>/claude/`. Auth credentials are stored there, isolated from other profiles and from `~/.claude`.
+Each profile is a fully independent Claude Code config directory under `~/.claudio/profiles/<name>/claude/`, with its own account, history, settings, plugins, skills, hooks and MCP servers. `claudio create` leaves it empty and Claude builds its layout on first launch, exactly as it does for `~/.claude`, so profiles always match the Claude Code version you run.
 
-By default, `settings.json` and `hooks/` are symlinked from `~/.claude` so all profiles share your global configuration. Use `--isolated` when a profile needs its own settings or hooks.
+Anything you install from a profile session stays in that profile, because Claude runs with `CLAUDE_CONFIG_DIR` pointing at it:
+
+```bash
+claudio work                               # then /plugin, /mcp, /config inside the session
+claudio work plugin install drawio@drawio  # Claude CLI subcommands work too
+claudio work mcp add <name> -- <command>
+```
+
+Third-party installers reach a profile only if they honor `CLAUDE_CONFIG_DIR`; run them from a session of that profile so they inherit it. Installers that always write to `~/.claude` only affect the local installation.
 
 ## Multiple terminals
 
@@ -172,29 +188,27 @@ When running `claudio` with no profile name, the resolution order is:
 
 ## Settings and local `.claude` directories
 
-claudio sets `CLAUDE_CONFIG_DIR` to the profile directory before launching Claude. `~/.claude` stays the source of truth for global settings: both `settings.json` and `hooks/` are symlinked from there into each profile.
+claudio sets `CLAUDE_CONFIG_DIR` to the profile directory before launching Claude. Claude also loads `.claude/CLAUDE.md` and `.claude/rules/` from every directory above the working directory as project instructions, and your home directory is one of them, so the local installation's `~/.claude/CLAUDE.md` would leak into every profile. claudio prevents it by passing `--settings` with `claudeMdExcludes` on every launch; the patterns live in [`claude.toml`](claude.toml) (`[launch]`). A `--settings` you pass yourself takes precedence.
 
 Project-level `.claude` directories work as normal. Claude Code merges project settings on top of global settings and runs project hooks alongside global hooks. If a project's `.claude` has its own `settings.json` or `hooks/`, those will override or extend the profile's config, which is standard Claude Code behavior. `claudio doctor` flags any local `.claude` directories where this could be unexpected.
 
 ## Troubleshooting
 
-### After `claudio migrate`, Claude asks me to log in again
+### After `claudio copy`, Claude asks me to log in again
 
-This is expected. Claude Code session tokens are tied to the `CLAUDE_CONFIG_DIR` they were created in. When a migrated profile runs for the first time under a different directory, Claude Code invalidates the existing session and starts a new one.
-
-Your configuration, preferences, and history are migrated correctly. Only the auth session needs to be re-established:
+This is expected. Claude Code stores login tokens in the system keychain, keyed by config directory, and they are not copied. Your configuration (and history, with `--with-history`) is copied; only the login needs to be done once:
 
 ```bash
 claudio login personal
 ```
 
-### `claudio migrate` fails with "profile already exists"
+### `claudio copy` fails with "profile already exists"
 
-If you previously ran `claudio create <name>`, the profile slot is already taken. Remove it first, then migrate:
+`claudio copy` always creates a new profile. Pick another name, or remove the existing profile first:
 
 ```bash
 claudio remove <name>
-claudio migrate <name>
+claudio copy --to-profile=<name> --from-local
 ```
 
 ## License
