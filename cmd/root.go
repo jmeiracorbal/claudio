@@ -15,12 +15,12 @@ var Version = "dev"
 var rootCmd = &cobra.Command{
 	Use:   "claudio",
 	Short: "Claude Code Account Manager",
-	Long: `claudio manages multiple Claude Code accounts with isolated profiles.
+	Long: `claudio manages multiple Claude Code accounts, one independent profile each.
 
 Quick start:
   claudio create personal
   claudio create work
-  claudio create client --isolated
+  claudio copy --to-profile=personal --from-local
 
 Profile shortcuts (from anywhere):
   claudio personal
@@ -43,7 +43,7 @@ func init() {
 	rootCmd.AddCommand(
 		manageCmd,
 		createCmd,
-		migrateCmd,
+		copyCmd,
 		restoreCmd,
 		listCmd,
 		currentCmd,

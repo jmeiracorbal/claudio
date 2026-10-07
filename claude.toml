@@ -1,0 +1,68 @@
+# Rules that tie claudio to how Claude Code lays out its configuration.
+# Embedded in the binary at build time: edit it and release a new version.
+# "~/" is expanded to the user's home directory.
+
+[launch]
+# Claude loads .claude/CLAUDE.md (and .claude/rules/) of every directory above
+# the working directory as project instructions, and the home directory is one
+# of them. Without these excludes, the local installation's instructions
+# would leak into every profile launched under the home directory.
+# Passed to Claude on every launch through --settings.
+claude_md_excludes = [
+  "~/.claude/CLAUDE.md",
+  "~/.claude/rules/**",
+]
+
+[copy]
+# What `claudio copy` takes from a Claude config directory. Entry names are
+# matched against its top level and accept glob patterns. Anything not listed
+# under history or exclude is configuration and is always copied.
+
+# Personal data of an account: copied only with --with-history.
+history = [
+  "history.jsonl",
+  "projects",
+  "sessions",
+  "session-env",
+  "file-history",
+  "shell-snapshots",
+  "paste-cache",
+  "todos",
+  "tasks",
+  "plans",
+]
+
+# Caches and machine state that Claude rebuilds on its own: never copied.
+exclude = [
+  ".credentials.json",
+  "cache",
+  "telemetry",
+  "statsig",
+  "backups",
+  "debug",
+  "logs",
+  "ide",
+  "chrome",
+  "downloads",
+  "state",
+  "stats-cache.json",
+  "mcp-needs-auth-cache.json",
+  "remote-settings.json",
+  "policy-limits.json*",
+  ".last-*",
+  "*.bak",
+]
+
+# Top-level keys of .claude.json to copy. The account identity (oauthAccount)
+# and caches are never copied: Claude fills them in at login.
+state_keys = ["mcpServers"]
+# Also copied with --with-history: per-project trust, permissions and MCP.
+history_state_keys = ["projects"]
+
+# Files that store absolute paths to their config directory (hook commands,
+# plugin locations). copy, rename and restore rewrite them to the destination.
+rewrite_paths_in = [
+  "settings.json",
+  "plugins/installed_plugins.json",
+  "plugins/known_marketplaces.json",
+]

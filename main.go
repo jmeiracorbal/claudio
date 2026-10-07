@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,11 +9,20 @@ import (
 	"github.com/jmeiracorbal/claudio/cmd"
 	"github.com/jmeiracorbal/claudio/internal/config"
 	"github.com/jmeiracorbal/claudio/internal/launcher"
+	"github.com/jmeiracorbal/claudio/internal/profile"
 )
 
 var version = "dev"
 
+//go:embed claude.toml
+var claudeTOML string
+
 func main() {
+	if err := profile.LoadRules(claudeTOML); err != nil {
+		fmt.Fprintln(os.Stderr, "claudio:", err)
+		os.Exit(1)
+	}
+
 	// Profile shortcut: claudio <profile-name> [claude-args...]
 	// Intercepted before cobra so flags like --continue are forwarded to claude, not parsed here.
 	if len(os.Args) > 1 {

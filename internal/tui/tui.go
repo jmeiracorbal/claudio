@@ -31,7 +31,6 @@ type model struct {
 	message   string
 	inputMode string
 	input     string
-	isolated  bool
 	confirm   bool
 	demoFrame bool
 }
@@ -121,11 +120,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.activate()
 		case "c":
 			if m.screen == "profiles" {
-				m.inputMode, m.input, m.isolated = "create", "", false
-			}
-		case "i":
-			if m.screen == "profiles" && m.inputMode == "create" {
-				m.isolated = !m.isolated
+				m.inputMode, m.input = "create", ""
 			}
 		case "r":
 			if m.screen == "profiles" && m.selected < len(m.profiles) {
@@ -246,7 +241,7 @@ func (m model) updateInput(key string) tea.Cmd {
 				m.message = "Profile name is required"
 				break
 			}
-			if err := profile.Create(name, m.isolated); err != nil {
+			if err := profile.Create(name); err != nil {
 				m.message = err.Error()
 			} else {
 				m.message = "Created profile " + name
@@ -306,10 +301,6 @@ func (m model) updateInput(key string) tea.Cmd {
 	case "down":
 		if (m.inputMode == "rule-profile" || m.inputMode == "pin-profile") && m.selected < len(m.profiles)-1 {
 			m.selected++
-		}
-	case "ctrl+i":
-		if m.inputMode == "create" {
-			m.isolated = !m.isolated
 		}
 	case "backspace":
 		if len(m.input) > 0 {
@@ -514,22 +505,13 @@ func (m model) profileLibrary() []string {
 	if m.selected < len(m.profiles) {
 		name := m.profiles[m.selected]
 		dir, _ := m.cfg.ProfileConfigDir(name)
-		typeLabel := "isolated settings and hooks"
-		if m.demoFrame || hasSharedLinks(dir) {
-			typeLabel = "shared settings and hooks"
+		typeLabel := "independent profile"
+		if m.cfg.Profiles[name].OriginAccount {
+			typeLabel = "origin account (copied from ~/.claude)"
 		}
 		lines = append(lines, "    Config   "+m.styles.Muted.Render(dir), "    Type     "+typeLabel)
 	}
 	return lines
-}
-
-func hasSharedLinks(dir string) bool {
-	for _, n := range []string{"settings.json", "hooks"} {
-		if i, e := os.Lstat(filepath.Join(dir, n)); e == nil && i.Mode()&os.ModeSymlink != 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func (m model) projectRouting() []string {
@@ -574,7 +556,7 @@ func selectionWindow(total, selected, visible int) (int, int) {
 
 func (m model) setup() []string {
 	if m.demoFrame {
-		return []string{"  SETUP OVERVIEW", "", "  ✓ Claude binary  /usr/local/bin/claude", "  ✓ Config file    ~/.claudio/config.json", "  ✓ Profile work   ready", "  ✓ Profile personal  ready", "", "  Resolved profile  work · path rule (~/projects/work/**)", "", "  Run `claudio doctor` for symlink and project-conflict checks."}
+		return []string{"  SETUP OVERVIEW", "", "  ✓ Claude binary  /usr/local/bin/claude", "  ✓ Config file    ~/.claudio/config.json", "  ✓ Profile work   ready", "  ✓ Profile personal  ready", "", "  Resolved profile  work · path rule (~/projects/work/**)", "", "  Run `claudio doctor` for profile and project-conflict checks."}
 	}
 	claude, err := exec.LookPath("claude")
 	claudeState := m.styles.Error.Render("✗ not found in PATH")
@@ -611,7 +593,7 @@ func (m model) setup() []string {
 	if ext := os.Getenv("CLAUDE_CONFIG_DIR"); ext != "" {
 		lines = append(lines, "  "+m.styles.Warning.Render("! CLAUDE_CONFIG_DIR is set externally · "+ext))
 	}
-	lines = append(lines, "", "  Run `claudio doctor` for symlink and project-conflict checks.")
+	lines = append(lines, "", "  Run `claudio doctor` for profile and project-conflict checks.")
 	return lines
 }
 
@@ -655,7 +637,7 @@ func (m model) nearestPinPath() string {
 func (m model) inputPrompt() string {
 	switch m.inputMode {
 	case "create":
-		return fmt.Sprintf("  New profile name: %s_   [ctrl+i toggle isolated: %t · enter save · esc cancel]", m.input, m.isolated)
+		return fmt.Sprintf("  New profile name: %s_   [enter save · esc cancel]", m.input)
 	case "rename":
 		return fmt.Sprintf("  Rename to: %s_   [enter save · esc cancel]", m.input)
 	case "rule-path":

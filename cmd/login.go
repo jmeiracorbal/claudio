@@ -12,7 +12,7 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login <name>",
 	Short: "Open Claude with the named profile to complete authentication",
-	Long: `Launch Claude with the given profile's isolated config directory.
+	Long: `Launch Claude with the given profile's config directory.
 If the profile is not yet authenticated, Claude will prompt you to log in.`,
 	Args:         cobra.ExactArgs(1),
 	RunE:         runLogin,
