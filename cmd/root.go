@@ -48,6 +48,7 @@ func init() {
 		listCmd,
 		currentCmd,
 		runCmd,
+		execCmd,
 		loginCmd,
 		removeCmd,
 		renameCmd,
