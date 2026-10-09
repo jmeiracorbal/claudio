@@ -76,7 +76,7 @@ func isFlag(s string) bool {
 func isSubcommand(s string) bool {
 	subcommands := []string{
 		"create", "list", "ls", "current", "manage",
-		"run", "login", "remove", "rm", "delete",
+		"run", "exec", "login", "remove", "rm", "delete",
 		"rename", "switch", "pin", "unpin", "doctor",
 		"model", "help", "completion",
 	}

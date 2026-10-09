@@ -57,6 +57,7 @@ claudio work
 | `claudio restore` | Copy the origin account back to the local installation (`~/.claude`) |
 | `claudio login <name>` | Open Claude with the given profile to authenticate |
 | `claudio <name> [-- args...]` | Launch Claude with that profile |
+| `claudio exec <name> -- <command> [args...]` | Run any command with `CLAUDE_CONFIG_DIR` set to that profile |
 | `claudio switch` | Interactive profile selector |
 | `claudio list` | List all profiles |
 | `claudio current` | Show which profile applies to the current directory |
@@ -149,7 +150,39 @@ claudio work plugin install drawio@drawio  # Claude CLI subcommands work too
 claudio work mcp add <name> -- <command>
 ```
 
-Third-party installers reach a profile only if they honor `CLAUDE_CONFIG_DIR`; run them from a session of that profile so they inherit it. Installers that always write to `~/.claude` only affect the local installation.
+Third-party installers reach a profile only if they honor `CLAUDE_CONFIG_DIR`. `claudio exec` runs any command with it set to a profile, without launching Claude, so you never have to set the variable yourself:
+
+```bash
+claudio exec work -- npx skills add <owner/repo> -g
+claudio exec work -- mnemo setup refresh --agent=claudecode
+```
+
+It replaces any `CLAUDE_CONFIG_DIR` already in the environment, so it also targets the right profile when run from inside another profile's session.
+
+Installers that ignore `CLAUDE_CONFIG_DIR` keep writing to `~/.claude` or `~/.claude.json`, even through `claudio exec`. Some honor it only in part: `mnemo setup` puts its skill and `CLAUDE.md` block in the profile but its MCP server in `~/.claude.json`, and `codegraph install` writes only to `~/.claude.json`. Check the profile afterwards with `claudio work mcp list` and register any missing MCP server with `claudio work mcp add`:
+
+```bash
+claudio work mcp add -s user codegraph -- codegraph serve --mcp
+```
+
+### Skills
+
+Global skills installed with [`npx skills`](https://skills.sh) work per profile. The `skills` CLI stores each skill once in `~/.agents/skills/` and symlinks it into `$CLAUDE_CONFIG_DIR/skills/`, so each profile gets its own link to the same skill:
+
+```bash
+claudio exec work -- npx skills add <owner/repo> -g
+claudio exec personal -- npx skills add <owner/repo> -g
+```
+
+Project skills (without `-g`) go into the project's `.claude/skills/` and are shared by every profile that opens the project.
+
+### Agent skill
+
+claudio ships a skill, `claudio-profiles`, that tells Claude how to install into profiles: when you ask it to add an MCP server, a skill, a plugin or run a tool's installer, it picks the target profile and uses `claudio exec` or `claudio <profile> mcp|plugin` instead of writing to `~/.claude` or copying files by hand. Install it in each profile where you want it:
+
+```bash
+claudio exec work -- npx skills add jmeiracorbal/claudio -g
+```
 
 ## Multiple terminals
 

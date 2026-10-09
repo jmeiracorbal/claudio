@@ -49,6 +49,30 @@ func Command(configDir string, args []string) (*exec.Cmd, error) {
 		return nil, err
 	}
 	cmd := exec.Command(claude, append([]string{"--settings", settings}, args...)...)
-	cmd.Env = append(os.Environ(), "CLAUDE_CONFIG_DIR="+configDir)
+	cmd.Env = Env(configDir)
 	return cmd, nil
+}
+
+// Exec replaces the current process with an arbitrary program running against
+// the profile, so installers that honor CLAUDE_CONFIG_DIR write into it.
+func Exec(configDir, name string, args []string) error {
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return fmt.Errorf("%s not found in PATH", name)
+	}
+	return syscall.Exec(path, append([]string{name}, args...), Env(configDir))
+}
+
+// Env returns the current environment with CLAUDE_CONFIG_DIR set to configDir.
+// An inherited CLAUDE_CONFIG_DIR (e.g. when called from inside a profile
+// session) is dropped rather than shadowed: with duplicate keys many runtimes
+// read the first one.
+func Env(configDir string) []string {
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "CLAUDE_CONFIG_DIR=") {
+			env = append(env, kv)
+		}
+	}
+	return append(env, "CLAUDE_CONFIG_DIR="+configDir)
 }
