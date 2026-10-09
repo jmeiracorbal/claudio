@@ -2,7 +2,6 @@ package main
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -53,18 +52,8 @@ func main() {
 
 func printLaunchInfo(profileName, configDir string) {
 	email := ""
-	type oauthAccount struct {
-		EmailAddress string `json:"emailAddress"`
-	}
-	type claudeJSON struct {
-		OauthAccount oauthAccount `json:"oauthAccount"`
-	}
-	data, err := os.ReadFile(configDir + "/.claude.json")
-	if err == nil {
-		var cj claudeJSON
-		if json.Unmarshal(data, &cj) == nil && cj.OauthAccount.EmailAddress != "" {
-			email = " (" + cj.OauthAccount.EmailAddress + ")"
-		}
+	if e := profile.Email(configDir); e != "" {
+		email = " (" + e + ")"
 	}
 	fmt.Fprintf(os.Stderr, "claudio: launching %q%s\n", profileName, email)
 }
@@ -78,7 +67,7 @@ func isSubcommand(s string) bool {
 		"create", "list", "ls", "current", "manage",
 		"run", "login", "remove", "rm", "delete",
 		"rename", "switch", "pin", "unpin", "doctor",
-		"model", "help", "completion",
+		"model", "status", "help", "completion",
 	}
 	for _, c := range subcommands {
 		if s == c {

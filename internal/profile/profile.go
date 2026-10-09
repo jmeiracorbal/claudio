@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -121,4 +122,19 @@ func Status(configDir string) string {
 		return "created"
 	}
 	return "ready"
+}
+
+// Email returns the account email Claude Code recorded in the profile's
+// .claude.json, or "" before the first login.
+func Email(configDir string) string {
+	var cj struct {
+		OauthAccount struct {
+			EmailAddress string `json:"emailAddress"`
+		} `json:"oauthAccount"`
+	}
+	data, err := os.ReadFile(filepath.Join(configDir, ".claude.json"))
+	if err != nil || json.Unmarshal(data, &cj) != nil {
+		return ""
+	}
+	return cj.OauthAccount.EmailAddress
 }

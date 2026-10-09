@@ -60,6 +60,7 @@ claudio work
 | `claudio switch` | Interactive profile selector |
 | `claudio list` | List all profiles |
 | `claudio current` | Show which profile applies to the current directory |
+| `claudio status [name] [--json] [--watch[=s]]` | Show plan usage limits for every profile, or one in detail |
 | `claudio pin <name>` | Pin a profile to the current directory |
 | `claudio pin unpin` | Remove the pin |
 | `claudio rename <old> <new>` | Rename a profile |
@@ -122,6 +123,26 @@ Existing `~/.claude` and `~/.claude.json` are backed up as `<name>.bak.<timestam
 ```bash
 claudio restore --from-profile=personal
 ```
+
+## Usage limits
+
+`claudio status` shows each account's plan usage: the 5-hour session and weekly windows, and when they reset.
+
+```bash
+claudio status              # every profile
+claudio status personal     # one profile in detail: email, plan, model, token, extra usage
+claudio status --watch      # refresh every 60s (--watch=30 for another interval)
+claudio status --json       # for scripts
+```
+
+```
+  NAME        PLAN    STATE        5H               RESETS      7D               RESETS
+  ----        ----    -----        --               ------      --               ------
+  personal    pro     ok             9% ░░░░░░░░░░  18:10        20% ██░░░░░░░░  Sat 20:00
+  work        team    ok             7% ░░░░░░░░░░  17:40        11% █░░░░░░░░░  Sun 09:00
+```
+
+Usage is read from Anthropic's OAuth usage endpoint with the token Claude Code stored for each profile (macOS Keychain, or `.credentials.json` on Linux); it does not consume tokens. claudio never refreshes a token: when one has expired the state is `expired`, and launching the profile once refreshes it. `none` means the profile has never logged in.
 
 ## Default model per profile
 
