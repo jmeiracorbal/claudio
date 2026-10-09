@@ -56,6 +56,7 @@ func init() {
 		pinCmd,
 		doctorCmd,
 		modelCmd,
+		statusCmd,
 	)
 }
 
