@@ -82,6 +82,7 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 				fail("Profile "+name, expanded, "directory missing")
 			} else {
 				pass("Profile "+name, expanded)
+				checkBaseURL(name+" "+baseURLVar, "settings.json", settingsBaseURL(expanded), pass, warn)
 			}
 		}
 	}
@@ -106,6 +107,9 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	if ext := os.Getenv("CLAUDE_CONFIG_DIR"); ext != "" {
 		warn("CLAUDE_CONFIG_DIR", ext, "set externally — claudio will override it")
 	}
+
+	// endpoint override inherited from the shell
+	checkBaseURL(baseURLVar, "the environment", os.Getenv(baseURLVar), pass, warn)
 
 	// conflicting .claude dirs in tree
 	checkConflictingClaudeDir(cwd, warn)
