@@ -71,6 +71,49 @@ func TestDefaultConfigDirStaysInsideProfilesRoot(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsPathTraversalName(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := Create("../escape"); err == nil {
+		t.Fatal("Create accepted a path-traversal profile name")
+	}
+
+	escapePath := filepath.Join(home, ".claudio", "escape")
+	if _, err := os.Stat(escapePath); !os.IsNotExist(err) {
+		t.Fatalf("Create left files outside the profiles root: %s", escapePath)
+	}
+}
+
+func TestRenameRejectsPathTraversalName(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := Create("work"); err != nil {
+		t.Fatal(err)
+	}
+	originalDir, err := DefaultConfigDir("work")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Rename("work", "../escape"); err == nil {
+		t.Fatal("Rename accepted a path-traversal profile name")
+	}
+
+	if _, err := os.Stat(originalDir); err != nil {
+		t.Fatalf("original profile moved after rejected rename: %v", err)
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := cfg.Profiles["work"]; !exists {
+		t.Fatal("original profile registration was lost after rejected rename")
+	}
+}
+
 func TestRemoveDeletesStandardProfileWrapper(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
