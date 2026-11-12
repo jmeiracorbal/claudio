@@ -5,11 +5,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/jmeiracorbal/claudio/internal/config"
 )
 
+var profileNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+
+// ValidateName keeps profile names portable and prevents path traversal when
+// they are embedded in ~/.claudio/profiles/<name>/claude.
+func ValidateName(name string) error {
+	if !profileNamePattern.MatchString(name) {
+		return fmt.Errorf("invalid profile name %q: use 1-64 letters, numbers, dots, underscores or hyphens, starting with a letter or number", name)
+	}
+	return nil
+}
+
 func DefaultConfigDir(name string) (string, error) {
+	if err := ValidateName(name); err != nil {
+		return "", err
+	}
 	dir, err := config.Dir()
 	if err != nil {
 		return "", err
@@ -49,8 +64,20 @@ func Remove(name string) error {
 	if !ok {
 		return fmt.Errorf("profile %q not found", name)
 	}
+
 	dir := config.ExpandPath(p.ConfigDir)
-	if err := os.RemoveAll(dir); err != nil {
+	removePath := dir
+
+	// Profiles created by claudio use a wrapper directory
+	// ~/.claudio/profiles/<name>/. Remove the complete wrapper so deleting a
+	// profile does not leave an empty directory behind. Custom/legacy config
+	// paths are limited to their configured directory.
+	if expectedDir, err := DefaultConfigDir(name); err == nil &&
+		filepath.Clean(dir) == filepath.Clean(expectedDir) {
+		removePath = filepath.Dir(expectedDir)
+	}
+
+	if err := os.RemoveAll(removePath); err != nil {
 		return fmt.Errorf("removing profile directory: %w", err)
 	}
 	delete(cfg.Profiles, name)
