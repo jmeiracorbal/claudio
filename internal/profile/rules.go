@@ -137,7 +137,7 @@ func CopyState(srcFile, dst string, withHistory bool) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dst, stateFile), encoded, 0600)
+	return writeFileIfDifferent(filepath.Join(dst, stateFile), encoded, 0600)
 }
 
 // stateFile is Claude's global state file inside a config directory.
