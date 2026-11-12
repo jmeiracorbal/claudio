@@ -134,6 +134,40 @@ func TestApplyRollsBackWhenInstallingStateFails(t *testing.T) {
 	assertNoBackups(t, dst, stateDst)
 }
 
+func TestApplySurfacesRollbackFailure(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "profile")
+	dst := filepath.Join(root, ".claude")
+	stateDst := filepath.Join(root, ".claude.json")
+	stamp := fixedTime().Format("20060102150405.000000000")
+	configBackup := dst + ".bak." + stamp
+
+	mustWriteFile(t, filepath.Join(src, "new.txt"), "new")
+	mustWriteFile(t, filepath.Join(dst, "old.txt"), "old")
+
+	ops := operations{
+		copyDir: func(string, string) error {
+			return errors.New("copy failed")
+		},
+		rewritePaths: func(string, string) error { return nil },
+		rename: func(from, to string) error {
+			if from == configBackup && to == dst {
+				return errors.New("restore backup failed")
+			}
+			return os.Rename(from, to)
+		},
+	}
+
+	_, err := apply(src, dst, stateDst, fixedTime(), ops)
+	if err == nil {
+		t.Fatal("apply unexpectedly succeeded")
+	}
+	if !strings.Contains(err.Error(), "copy failed") || !strings.Contains(err.Error(), "rollback failed") {
+		t.Fatalf("apply error = %v, want original and rollback failures", err)
+	}
+	assertFileContent(t, filepath.Join(configBackup, "old.txt"), "old")
+}
+
 func TestApplyCommitsAndRetainsBackups(t *testing.T) {
 	root := t.TempDir()
 	src := filepath.Join(root, "profile")
