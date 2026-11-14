@@ -3,6 +3,7 @@ package limits
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -25,10 +26,11 @@ const (
 type State string
 
 const (
-	StateOK          State = "ok"
-	StateExpired     State = "expired"     // token expired or rejected (401); launching the profile refreshes it
-	StateNone        State = "none"        // no stored credentials: never logged in
-	StateUnavailable State = "unavailable" // network or server failure
+	StateOK               State = "ok"
+	StateExpired          State = "expired"           // token expired or rejected (401); launching the profile refreshes it
+	StateNone             State = "none"              // no stored credentials: never logged in
+	StateCredentialsError State = "credentials_error" // stored credentials exist but cannot be read or parsed
+	StateUnavailable      State = "unavailable"       // network or server failure
 )
 
 // Window is one usage limit, e.g. the 5-hour session or the weekly window.
@@ -88,24 +90,50 @@ func KeychainService(configDir string) string {
 	return keychainBase + "-" + hex.EncodeToString(sum[:])[:8]
 }
 
+var errCredentialsNotFound = errors.New("credentials not found")
+
 // readCredentials returns the stored OAuth credentials: the credentials file
 // where Claude Code uses one (Linux), otherwise the macOS Keychain.
+//
+// A missing credential store is reported with errCredentialsNotFound. Any
+// existing-but-unreadable, malformed or incomplete credential store remains a
+// real error so status does not misreport it as "not logged in".
 func readCredentials(configDir string) (*credentials, error) {
-	data, err := os.ReadFile(filepath.Join(configDir, ".credentials.json"))
-	if err != nil && runtime.GOOS == "darwin" {
-		ctx, cancel := context.WithTimeout(context.Background(), keychainTimeout)
-		defer cancel()
-		data, err = exec.CommandContext(ctx, "security", "find-generic-password", "-s", KeychainService(configDir), "-w").Output()
+	path := filepath.Join(configDir, ".credentials.json")
+	data, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		return parseCredentials(data)
+	case !os.IsNotExist(err):
+		return nil, fmt.Errorf("reading credentials file %s: %w", path, err)
+	case runtime.GOOS != "darwin":
+		return nil, errCredentialsNotFound
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), keychainTimeout)
+	defer cancel()
+
+	data, err = exec.CommandContext(ctx, "security", "find-generic-password", "-s", KeychainService(configDir), "-w").Output()
 	if err != nil {
-		return nil, err
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("reading macOS Keychain: %w", ctx.Err())
+		}
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 44 {
+			return nil, errCredentialsNotFound
+		}
+		return nil, fmt.Errorf("reading macOS Keychain: %w", err)
 	}
+	return parseCredentials(data)
+}
+
+func parseCredentials(data []byte) (*credentials, error) {
 	var c credentials
 	if err := json.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("parsing credentials: %w", err)
 	}
 	if c.ClaudeAiOauth.AccessToken == "" {
-		return nil, fmt.Errorf("no OAuth token in credentials")
+		return nil, fmt.Errorf("credentials contain no OAuth token")
 	}
 	return &c, nil
 }
@@ -118,7 +146,11 @@ func Probe(ctx context.Context, configDir string) Report {
 
 	c, err := readCredentials(configDir)
 	if err != nil {
-		r.State = StateNone
+		if errors.Is(err, errCredentialsNotFound) {
+			r.State = StateNone
+			return r
+		}
+		r.State, r.Error = StateCredentialsError, err.Error()
 		return r
 	}
 	o := c.ClaudeAiOauth
