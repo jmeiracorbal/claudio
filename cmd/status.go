@@ -145,7 +145,7 @@ func printStatusTable(cfg *config.Config, names []string, reports map[string]lim
 	}
 
 	row := func(name, plan, state, five, fiveReset, week, weekReset string) {
-		fmt.Printf("  %-*s  %-6s  %-11s  %-15s  %-10s  %-15s  %s\n", maxLen, name, plan, state, five, fiveReset, week, weekReset)
+		fmt.Printf("  %-*s  %-6s  %-17s  %-15s  %-10s  %-15s  %s\n", maxLen, name, plan, state, five, fiveReset, week, weekReset)
 	}
 	row("NAME", "PLAN", "STATE", "5H", "RESETS", "7D", "RESETS")
 	row("----", "----", "-----", "--", "------", "--", "------")
@@ -167,6 +167,8 @@ func printStatusTable(cfg *config.Config, names []string, reports map[string]lim
 			hints = append(hints, fmt.Sprintf("%s: token expired, launch it to refresh (claudio %s)", n, n))
 		case limits.StateNone:
 			hints = append(hints, fmt.Sprintf("%s: not logged in (claudio login %s)", n, n))
+		case limits.StateCredentialsError:
+			hints = append(hints, fmt.Sprintf("%s: credentials error: %s", n, reports[n].Error))
 		case limits.StateUnavailable:
 			hints = append(hints, fmt.Sprintf("%s: %s", n, reports[n].Error))
 		}
@@ -213,6 +215,8 @@ func printStatusDetail(cfg *config.Config, name string, r limits.Report) {
 		state += fmt.Sprintf(" · launch the profile to refresh it (claudio %s)", name)
 	case limits.StateNone:
 		state += fmt.Sprintf(" · not logged in (claudio login %s)", name)
+	case limits.StateCredentialsError:
+		state += " · " + r.Error
 	case limits.StateUnavailable:
 		state += " · " + r.Error
 	}
