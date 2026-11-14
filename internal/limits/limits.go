@@ -119,13 +119,17 @@ func readCredentials(configDir string) (*credentials, error) {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("reading macOS Keychain: %w", ctx.Err())
 		}
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && exitErr.ExitCode() == keychainItemNotFoundExitCode {
+		if keychainItemNotFound(err) {
 			return nil, errCredentialsNotFound
 		}
 		return nil, fmt.Errorf("reading macOS Keychain: %w", err)
 	}
 	return parseCredentials(data)
+}
+
+func keychainItemNotFound(err error) bool {
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr) && exitErr.ExitCode() == keychainItemNotFoundExitCode
 }
 
 func parseCredentials(data []byte) (*credentials, error) {
