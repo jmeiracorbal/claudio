@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -13,6 +14,18 @@ func TestKeychainService(t *testing.T) {
 	got := KeychainService("/Users/dankkomcg/.claudio/profiles/personal/claude")
 	if want := "Claude Code-credentials-7bbe3a0b"; got != want {
 		t.Fatalf("KeychainService = %q, want %q", got, want)
+	}
+}
+
+func TestKeychainItemNotFound(t *testing.T) {
+	err := exec.Command("sh", "-c", "exit 44").Run()
+	if !keychainItemNotFound(err) {
+		t.Fatalf("exit 44 was not classified as keychain item not found: %v", err)
+	}
+
+	err = exec.Command("sh", "-c", "exit 1").Run()
+	if keychainItemNotFound(err) {
+		t.Fatalf("exit 1 was classified as keychain item not found: %v", err)
 	}
 }
 
@@ -55,6 +68,43 @@ func TestWindowsFallsBackToFixedFields(t *testing.T) {
 func TestProbeWithoutCredentials(t *testing.T) {
 	if r := Probe(context.Background(), t.TempDir()); r.State != StateNone {
 		t.Fatalf("State = %q, want %q", r.State, StateNone)
+	}
+}
+
+func TestProbeMalformedCredentials(t *testing.T) {
+	dir := writeCredentials(t, `{"claudeAiOauth":`)
+	r := Probe(context.Background(), dir)
+	if r.State != StateCredentialsError {
+		t.Fatalf("State = %q, want %q", r.State, StateCredentialsError)
+	}
+	if r.Error == "" {
+		t.Fatal("credentials error is not exposed")
+	}
+}
+
+func TestProbeCredentialsWithoutOAuthToken(t *testing.T) {
+	dir := writeCredentials(t, `{"claudeAiOauth":{"subscriptionType":"pro"}}`)
+	r := Probe(context.Background(), dir)
+	if r.State != StateCredentialsError {
+		t.Fatalf("State = %q, want %q", r.State, StateCredentialsError)
+	}
+	if r.Error == "" {
+		t.Fatal("missing OAuth token error is not exposed")
+	}
+}
+
+func TestProbeCredentialsReadFailure(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, ".credentials.json"), 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	r := Probe(context.Background(), dir)
+	if r.State != StateCredentialsError {
+		t.Fatalf("State = %q, want %q", r.State, StateCredentialsError)
+	}
+	if r.Error == "" {
+		t.Fatal("credentials read error is not exposed")
 	}
 }
 
