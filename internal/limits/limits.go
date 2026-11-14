@@ -18,8 +18,9 @@ import (
 const (
 	usageURL        = "https://api.anthropic.com/api/oauth/usage"
 	oauthBeta       = "oauth-2025-04-20"
-	keychainBase    = "Claude Code-credentials"
-	keychainTimeout = 4 * time.Second
+	keychainBase                 = "Claude Code-credentials"
+	keychainTimeout              = 4 * time.Second
+	keychainItemNotFoundExitCode = 44 // errSecItemNotFound (-25300) returned by security(1)
 )
 
 // State summarizes whether a profile's usage could be read.
@@ -119,7 +120,7 @@ func readCredentials(configDir string) (*credentials, error) {
 			return nil, fmt.Errorf("reading macOS Keychain: %w", ctx.Err())
 		}
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && exitErr.ExitCode() == 44 {
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == keychainItemNotFoundExitCode {
 			return nil, errCredentialsNotFound
 		}
 		return nil, fmt.Errorf("reading macOS Keychain: %w", err)
