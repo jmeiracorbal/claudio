@@ -108,7 +108,8 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 		warn("CLAUDE_CONFIG_DIR", ext, "set externally — claudio will override it")
 	}
 
-	// endpoint override inherited from the shell
+	// authentication and endpoint overrides inherited from the shell
+	checkAnthropicAPIKey(os.Getenv(anthropicAPIKeyVar), warn)
 	checkBaseURL(baseURLVar, "the environment", os.Getenv(baseURLVar), pass, warn)
 
 	// conflicting .claude dirs in tree
