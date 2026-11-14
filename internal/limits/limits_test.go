@@ -58,6 +58,43 @@ func TestProbeWithoutCredentials(t *testing.T) {
 	}
 }
 
+func TestProbeMalformedCredentials(t *testing.T) {
+	dir := writeCredentials(t, `{"claudeAiOauth":`)
+	r := Probe(context.Background(), dir)
+	if r.State != StateCredentialsError {
+		t.Fatalf("State = %q, want %q", r.State, StateCredentialsError)
+	}
+	if r.Error == "" {
+		t.Fatal("credentials error is not exposed")
+	}
+}
+
+func TestProbeCredentialsWithoutOAuthToken(t *testing.T) {
+	dir := writeCredentials(t, `{"claudeAiOauth":{"subscriptionType":"pro"}}`)
+	r := Probe(context.Background(), dir)
+	if r.State != StateCredentialsError {
+		t.Fatalf("State = %q, want %q", r.State, StateCredentialsError)
+	}
+	if r.Error == "" {
+		t.Fatal("missing OAuth token error is not exposed")
+	}
+}
+
+func TestProbeCredentialsReadFailure(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, ".credentials.json"), 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	r := Probe(context.Background(), dir)
+	if r.State != StateCredentialsError {
+		t.Fatalf("State = %q, want %q", r.State, StateCredentialsError)
+	}
+	if r.Error == "" {
+		t.Fatal("credentials read error is not exposed")
+	}
+}
+
 func TestProbeExpiredTokenSkipsRequest(t *testing.T) {
 	dir := writeCredentials(t, `{"claudeAiOauth": {"accessToken": "x", "expiresAt": 1000, "subscriptionType": "pro"}}`)
 	r := Probe(context.Background(), dir)
