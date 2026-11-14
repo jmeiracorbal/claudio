@@ -8,6 +8,7 @@ import (
 
 	"github.com/jmeiracorbal/claudio/internal/config"
 	"github.com/jmeiracorbal/claudio/internal/profile"
+	restorepkg "github.com/jmeiracorbal/claudio/internal/restore"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,8 @@ By default it uses the origin account (the profile copied with --from-local).
 Use --from-profile to restore a specific profile instead.
 
 Existing ~/.claude and ~/.claude.json are backed up as <name>.bak.<timestamp>
-before being replaced.
+before being replaced. If any restore step fails after a backup is created,
+claudio rolls the local installation back before returning the error.
 
 Examples:
   claudio restore
@@ -59,35 +61,19 @@ func runRestore(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	dst := filepath.Join(home, ".claude")
-
 	stateDst := filepath.Join(home, ".claude.json")
-	stamp := time.Now().Format("20060102150405")
-	for _, path := range []string{dst, stateDst} {
-		if _, err := os.Stat(path); err == nil {
-			bak := path + ".bak." + stamp
-			if err := os.Rename(path, bak); err != nil {
-				return fmt.Errorf("backing up %s: %w", path, err)
-			}
-			fmt.Printf("Backed up existing %s → %s\n", path, bak)
-		}
+
+	result, err := restorepkg.Apply(src, dst, stateDst, time.Now())
+	if err != nil {
+		return err
 	}
 
-	if err := os.MkdirAll(dst, 0755); err != nil {
-		return fmt.Errorf("creating ~/.claude: %w", err)
+	if result.ConfigBackup != "" {
+		fmt.Printf("Backed up existing %s → %s\n", dst, result.ConfigBackup)
 	}
-	if err := profile.CopyDir(src, dst); err != nil {
-		return fmt.Errorf("copying files: %w", err)
+	if result.StateBackup != "" {
+		fmt.Printf("Backed up existing %s → %s\n", stateDst, result.StateBackup)
 	}
-	if err := profile.RewritePaths(dst, src); err != nil {
-		return fmt.Errorf("rewriting paths: %w", err)
-	}
-	// Outside a profile Claude reads ~/.claude.json, not ~/.claude/.claude.json.
-	if state := filepath.Join(dst, ".claude.json"); fileExists(state) {
-		if err := os.Rename(state, stateDst); err != nil {
-			return fmt.Errorf("moving %s: %w", state, err)
-		}
-	}
-
 	fmt.Printf("Restored profile %q → %s\n", profileName, dst)
 	return nil
 }
@@ -104,9 +90,4 @@ func resolveRestoreProfile(cfg *config.Config) (string, error) {
 		return "", fmt.Errorf("no origin account found — use --from-profile=<name>")
 	}
 	return name, nil
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }
