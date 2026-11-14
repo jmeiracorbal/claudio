@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -13,6 +14,18 @@ func TestKeychainService(t *testing.T) {
 	got := KeychainService("/Users/dankkomcg/.claudio/profiles/personal/claude")
 	if want := "Claude Code-credentials-7bbe3a0b"; got != want {
 		t.Fatalf("KeychainService = %q, want %q", got, want)
+	}
+}
+
+func TestKeychainItemNotFound(t *testing.T) {
+	err := exec.Command("sh", "-c", "exit 44").Run()
+	if !keychainItemNotFound(err) {
+		t.Fatalf("exit 44 was not classified as keychain item not found: %v", err)
+	}
+
+	err = exec.Command("sh", "-c", "exit 1").Run()
+	if keychainItemNotFound(err) {
+		t.Fatalf("exit 1 was classified as keychain item not found: %v", err)
 	}
 }
 
