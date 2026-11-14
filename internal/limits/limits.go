@@ -3,9 +3,9 @@ package limits
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	usageURL        = "https://api.anthropic.com/api/oauth/usage"
-	oauthBeta       = "oauth-2025-04-20"
+	usageURL                     = "https://api.anthropic.com/api/oauth/usage"
+	oauthBeta                    = "oauth-2025-04-20"
 	keychainBase                 = "Claude Code-credentials"
 	keychainTimeout              = 4 * time.Second
 	keychainItemNotFoundExitCode = 44 // errSecItemNotFound (-25300) returned by security(1)
